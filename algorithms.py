@@ -109,12 +109,12 @@ class rnd:
         self.α = α
         if len(task.x_shape) == 1:
             self.nn = RegularNet(input_dim=task.x_shape[0], output_dim=0, layers=layers)
-            self.random_nn = RegularNet(input_dim=task.x_shape[0], output_dim=0, layers=layers)
-            self.copier_nn = RegularNet(input_dim=task.x_shape[0], output_dim=0, layers=(8, 8, 8, 8))
+            self.random_nn = RegularNet(input_dim=task.x_shape[0], output_dim=0, layers=(128, 128, 128, 128))
+            self.copier_nn = RegularNet(input_dim=task.x_shape[0], output_dim=0, layers=(2, 2, 2, 8))
         else:
             self.nn = ConvNet(input_shape=task.x_shape, output_dim=0, layers=layers)
             self.random_nn = ConvNet(input_shape=task.x_shape, output_dim=0, layers=(128, 128, 128, 128))
-            self.copier_nn = ConvNet(input_shape=task.x_shape, output_dim=0, layers=(1, 1, 1, 8))
+            self.copier_nn = ConvNet(input_shape=task.x_shape, output_dim=0, layers=(2, 2, 2, 8))
         self.opt = torch.optim.Adam(list(self.nn.parameters()) + list(self.copier_nn.parameters()), 1e-4)
 
     def learn(self, step, x, y):

@@ -87,26 +87,18 @@ class mnist_adv_aug(mnist_aug):
 
 class bw:
     def __init__(self, dataset_size=6000, test_dataset_size=600, classes=3):
-        assert dataset_size % (2*classes) == 0
+        assert dataset_size % (classes) == 0
         self.data = torch.rand([dataset_size] + self.x_shape)
         self.targets = torch.zeros(dataset_size)
-        for n in range(2*classes):
-            if n < classes:
-                self.data[n*(dataset_size//(2*classes)):(n+1)*(dataset_size//(2*classes))] = (self.data[n*(dataset_size//(2*classes)):(n+1)*(dataset_size//(2*classes))] < .5*(n/(classes-1))).float()
-                self.targets[n*(dataset_size//(2*classes)):(n+1)*(dataset_size//(2*classes))] = float(n)
-            else:
-                self.data[n*(dataset_size//(2*classes)):(n+1)*(dataset_size//(2*classes))] = (self.data[n*(dataset_size//(2*classes)):(n+1)*(dataset_size//(2*classes))] > .5*((n-classes)/(classes-1))).float()
-                self.targets[n*(dataset_size//(2*classes)):(n+1)*(dataset_size//(2*classes))] = float(n) - classes
+        for n in range(classes):
+            self.data[n*(dataset_size//(classes)):(n+1)*(dataset_size//(classes))] = (self.data[n*(dataset_size//(classes)):(n+1)*(dataset_size//(classes))] < .5*(n/(classes-1))).float()
+            self.targets[n*(dataset_size//(classes)):(n+1)*(dataset_size//(classes))] = float(n)
 
         self.test_data = torch.rand([test_dataset_size] + self.x_shape)
         self.test_targets = torch.zeros(test_dataset_size)
-        for n in range(2*classes):
-            if n < classes:
-                self.test_data[n*(dataset_size//(2*classes)):(n+1)*(dataset_size//(2*classes))] = (self.test_data[n*(dataset_size//(2*classes)):(n+1)*(dataset_size//(2*classes))] < .5*(n/(classes-1))).float()
-                self.test_targets[n*(dataset_size//(2*classes)):(n+1)*(dataset_size//(2*classes))] = float(n)
-            else:
-                self.test_data[n*(dataset_size//(2*classes)):(n+1)*(dataset_size//(2*classes))] = (self.test_data[n*(dataset_size//(2*classes)):(n+1)*(dataset_size//(2*classes))] > .5*((n-classes)/(classes-1))).float()
-                self.test_targets[n*(dataset_size//(2*classes)):(n+1)*(dataset_size//(2*classes))] = float(n) - classes
+        for n in range(classes):
+            self.test_data[n*(dataset_size//(classes)):(n+1)*(dataset_size//(classes))] = (self.test_data[n*(dataset_size//(classes)):(n+1)*(dataset_size//(classes))] < .5*(n/(classes-1))).float()
+            self.test_targets[n*(dataset_size//(classes)):(n+1)*(dataset_size//(classes))] = float(n)
     @property
     def x_shape(self):
         return [1, 16, 16]

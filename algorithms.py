@@ -103,3 +103,42 @@ class ensemble:
         :return: [n, n_arms] of predictions for each arm
         """
         return self.nn(x, α=self.α, β=self.β)
+
+class rnd:
+    def __init__(self, task, layers=(32, 32, 64, 64), α=1., **kwargs):
+        self.α = α
+        if len(task.x_shape) == 1:
+            self.nn = RegularNet(input_dim=task.x_shape[0], output_dim=0, layers=layers)
+            self.random_nn = RegularNet(input_dim=task.x_shape[0], output_dim=0, layers=layers)
+            self.copier_nn = RegularNet(input_dim=task.x_shape[0], output_dim=0, layers=(8, 8, 8, 8))
+        else:
+            self.nn = ConvNet(input_shape=task.x_shape, output_dim=0, layers=layers)
+            self.random_nn = ConvNet(input_shape=task.x_shape, output_dim=0, layers=(128, 128, 128, 128))
+            self.copier_nn = ConvNet(input_shape=task.x_shape, output_dim=0, layers=(1, 1, 1, 8))
+        self.opt = torch.optim.Adam(list(self.nn.parameters()) + list(self.copier_nn.parameters()), 1e-4)
+
+    def learn(self, step, x, y):
+        """
+        :param step: int, how many steps of training
+        :param idx: [n] of ints, a unique id per data point
+        :param x: [n, x_shape...] of inputs
+        :param a: [n] of ints corresponding to action selections
+        :param y: [n] of floats, the targets for each (x,a)
+        :return: loss at this step
+        """
+        guess = self.nn(x)
+        loss = torch.nn.functional.mse_loss(guess, y)
+        random_y = (self.random_nn(x) * 100).detach()
+        copy_guess = self.copier_nn(x)
+        copy_loss = torch.nn.functional.mse_loss(copy_guess, random_y)
+        self.opt.zero_grad()
+        (loss + copy_loss).backward()
+        self.opt.step()
+        return dict(loss=loss.detach().item(), copy_loss=copy_loss.detach().item())
+
+    def predict(self, x):
+        """
+        :param x: [n, x_shape...] of test inputs
+        :return: [n, n_arms] of predictions for each arm
+        """
+        return self.nn(x) - self.α * (self.copier_nn(x) - self.random_nn(x)*100)**2

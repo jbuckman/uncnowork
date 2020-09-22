@@ -13,7 +13,7 @@ parser.add_argument("--steps", default=60000, type=int)
 parser.add_argument("--minibatch_size", default=128, type=int)
 parser.add_argument("--dataset_size", default=None, type=int)
 parser.add_argument("--test_runs", default=100, type=int)
-parser.add_argument("--name", default=None)
+parser.add_argument("--save", default=None)
 parser.add_argument("--seed", default=None, type=int)
 parser.add_argument("--task", choices=all_object_names(tasks), default="mnist")
 parser.add_argument("--algo", choices=all_object_names(algorithms), default="vanilla")
@@ -27,6 +27,10 @@ with launch_ipdb_on_exception():
 
     if args.seed is not None: torch.manual_seed(args.seed)
 
+    train_losses_to_plot_x = []
+    train_losses_to_plot_y = []
+    test_losses_to_plot_x = []
+    test_losses_to_plot_y = []
     losses = defaultdict(list)
     for step in range(args.steps):
         x_minibatch, y_minibatch = task.train_sample(args.minibatch_size)
@@ -34,6 +38,8 @@ with launch_ipdb_on_exception():
         for k,v in loss.items(): losses[k].append(v)
         if (step + 1) % 100 == 0:
             print(f"{(step+1)/args.steps:.2%}\tstep={step+1}/{args.steps} | " + ' '.join([f"{k}={sum(v[-25:])/25:.3}" for k,v in losses.items()]))
+            train_losses_to_plot_x.append(step)
+            train_losses_to_plot_y.append(np.mean(losses['loss'][-100:]))
         if (step + 1) % 1000 == 0:
             print("Evaluating...")
             test_losses = defaultdict(list)
@@ -47,16 +53,21 @@ with launch_ipdb_on_exception():
                 except StopIteration:
                     pass
             for name, val in test_losses.items(): print(f"test {name}: {np.mean(val):.3}")
+            test_losses_to_plot_x.append(step)
+            test_losses_to_plot_y.append(np.mean(test_losses['loss']))
 
     print("Training complete.")
-    namestr = f"-{args.name}" if args.name is not None else ""
-    with open(f"models/{args.task}-{args.algo}{namestr}.pt", "wb") as f:
-        torch.save(learner.nn, f)
+    if args.save is not None:
+        with open(f"models/{args.save}.pt", "wb") as f:
+            torch.save(learner.nn, f)
 
-    with open(f"models/{args.task}-{args.algo}.pt", "rb") as f: learner.nn = torch.load(f)
+    plt.plot(train_losses_to_plot_x, train_losses_to_plot_y, label="train")
+    plt.plot(test_losses_to_plot_x, test_losses_to_plot_y, label="test")
+    plt.legend()
+    plt.show()
 
     print("\n\nFinding highest-output image...")
-    x = advsearch.find_highest(task, learner)
+    x = advsearch.find_highest(task, learner)[None,...]
     if hasattr(task, "score_fn"):
         print(f"Model evaluation: {learner.predict(x).item()}, true score: {task.score_fn(x).item()}")
     else:
@@ -67,7 +78,7 @@ with launch_ipdb_on_exception():
 
     if hasattr(task, "score_fn"):
         print("\n\nFinding highest-error image...")
-        x = advsearch.find_highest(task, learner, search_for_error=True)
+        x = advsearch.find_highest(task, learner, search_for_error=True)[None,...]
         print(f"Model evaluation: {learner.predict(x).item()}, true score: {task.score_fn(x).item()}")
         npimg = x[0, 0].detach().numpy()
         plt.imshow(npimg, cmap='gray', vmin=0., vmax=1.)
@@ -75,7 +86,7 @@ with launch_ipdb_on_exception():
 
     if hasattr(task, "restriction_fn"):
         print("\n\nFinding highest-output restricted image...")
-        x = advsearch.find_highest(task, learner, restriction_fn=task.restriction_fn)
+        x = advsearch.find_highest(task, learner, restriction_fn=task.restriction_fn)[None,...]
         print(f"Model evaluation on submanifold: {learner.predict(x).item()}, true score: {task.score_fn(x).item()}")
         npimg = x[0,0].detach().numpy()
         plt.imshow(npimg, cmap='gray', vmin=0., vmax=1.)
@@ -83,8 +94,9 @@ with launch_ipdb_on_exception():
 
         if hasattr(task, "score_fn"):
             print("\n\nFinding highest-error restricted image...")
-            x = advsearch.find_highest(task, learner, search_for_error=True, restriction_fn=task.restriction_fn)
+            x = advsearch.find_highest(task, learner, search_for_error=True, restriction_fn=task.restriction_fn)[None,...]
             print(f"Model evaluation: {learner.predict(x).item()}, true score: {task.score_fn(x).item()}")
             npimg = x[0, 0].detach().numpy()
             plt.imshow(npimg, cmap='gray', vmin=0., vmax=1.)
             plt.show()
+    1+''
